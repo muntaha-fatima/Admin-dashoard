@@ -815,7 +815,7 @@ import { withCORS } from "@/lib/withCORS";
 
 
 
-const allowedOrigins = [
+const allowedOrigins: string[] = [
   "https://frontend-rho-jet-76.vercel.app",
   "https://book-website-rho-sooty.vercel.app",
   "http://localhost:3000",
