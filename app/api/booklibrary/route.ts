@@ -806,98 +806,147 @@
 //   return withCORS(res, req);
 // }
 
-
-
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { Book } from "@/models/books"; // Make sure the path is correct
+import { Book } from "@/models/books";
 
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "https://frontend-rho-jet-76.vercel.app",
-  "https://book-website-rho-sooty.vercel.app"
+  "https://book-website-rho-sooty.vercel.app",
 ];
 
-
-function withCORS(req: NextRequest, res: NextResponse) {
-  const origin = req.headers.get("origin") || "";
-
-  if (allowedOrigins.includes(origin)) {
+function withCORS(req: NextRequest, res: NextResponse): NextResponse {
+  const origin = req.headers.get("origin");
+  if (origin && allowedOrigins.includes(origin)) {
     res.headers.set("Access-Control-Allow-Origin", origin);
   }
-
   res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   return res;
 }
 
 export async function OPTIONS(req: NextRequest) {
-  return withCORS(req, NextResponse.json({}, { status: 200 }));
+  const response = new NextResponse(null, { status: 204 });
+  return withCORS(req, response);
 }
-
-export const revalidate = 0; 
 
 export async function POST(req: NextRequest) {
-    try {
-        await connectToDatabase();
-        const body = await req.json();
-        const newBook = new Book(body);
-        await newBook.save();
-        return NextResponse.json({ success: true, data: newBook });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  try {
+    await connectToDatabase();
+    const body = await req.json();
+
+    const { title, author, description, imageUrl, pdfUrl, isFeatured } = body;
+
+    // Validate required fields
+    if (!title || !author || !description || !imageUrl || !pdfUrl || isFeatured === undefined) {
+      return NextResponse.json(
+        { success: false, message: "Missing required fields." },
+        { status: 400 }
+      );
     }
 
+    const newBook = new Book({
+      title,
+      author,
+      description,
+      imageUrl,
+      pdfUrl,
+      isFeatured,
+    });
+
+    await newBook.save();
+    const response = NextResponse.json(
+      { success: true, message: "Book added successfully.", data: newBook },
+      { status: 201 }
+    );
+    return withCORS(req, response);
+  } catch (error: any) {
+    console.error("POST Error:", error);
+    const response = NextResponse.json(
+      { success: false, message: "Server error.", error: error.message },
+      { status: 500 }
+    );
+    return withCORS(req, response);
+  }
 }
+
 export async function GET(req: NextRequest) {
-  await connectToDatabase();
-  const books = await Book.find({});
-  const res = NextResponse.json(books, { status: 200 });
-  return withCORS(req, res);
+  try {
+    await connectToDatabase();
+    const books = await Book.find({});
+    const response = NextResponse.json({ success: true, data: books }, { status: 200 });
+    return withCORS(req, response);
+  } catch (error: any) {
+    console.error("GET Error:", error);
+    const response = NextResponse.json(
+      { success: false, message: "Server error.", error: error.message },
+      { status: 500 }
+    );
+    return withCORS(req, response);
+  }
 }
-
-
 
 export async function PUT(req: NextRequest) {
-    try {
-        await connectToDatabase();
-        const { searchParams } = new URL(req.url);
-        const id = searchParams.get("id");
-        const data = await req.json();
+  try {
+    await connectToDatabase();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    const data = await req.json();
 
-        if (!id) {
-            return NextResponse.json({ success: false, message: "ID missing" }, { status: 400 });
-        }
-
-        const updatedBook = await Book.findByIdAndUpdate(id, data, { new: true });
-        if (!updatedBook) {
-            return NextResponse.json({ success: false, message: "Book not found" }, { status: 404 });
-        }
-        return NextResponse.json({ success: true, message: "Book updated", data: updatedBook }, { status: 200 });
-    } catch (error) {
-        console.error("PUT error:", error);
-        return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
+    if (!id) {
+      return NextResponse.json({ success: false, message: "ID missing." }, { status: 400 });
     }
+
+    const updatedBook = await Book.findByIdAndUpdate(id, data, { new: true });
+    if (!updatedBook) {
+      return NextResponse.json({ success: false, message: "Book not found." }, { status: 404 });
+    }
+
+    const response = NextResponse.json(
+      { success: true, message: "Book updated successfully.", data: updatedBook },
+      { status: 200 }
+    );
+    return withCORS(req, response);
+  } catch (error: any) {
+    console.error("PUT Error:", error);
+    const response = NextResponse.json(
+      { success: false, message: "Server error.", error: error.message },
+      { status: 500 }
+    );
+    return withCORS(req, response);
+  }
 }
 
 export async function DELETE(req: NextRequest) {
-    try {
-        await connectToDatabase();
-        const { searchParams } = new URL(req.url);
-        const id = searchParams.get("id");
+  try {
+    await connectToDatabase();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
 
-        if (!id) {
-            return NextResponse.json({ success: false, message: "ID missing" }, { status: 400 });
-        }
-
-        const deletedBook = await Book.findByIdAndDelete(id);
-        if (!deletedBook) {
-            return NextResponse.json({ success: false, message: "Book not found" }, { status: 404 });
-        }
-        return NextResponse.json({ success: true, message: "Book deleted" }, { status: 200 });
-    } catch (error) {
-        console.error("DELETE error:", error);
-        return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
+    if (!id) {
+      return NextResponse.json({ success: false, message: "ID missing." }, { status: 400 });
     }
+
+    const deletedBook = await Book.findByIdAndDelete(id);
+    if (!deletedBook) {
+      return NextResponse.json({ success: false, message: "Book not found." }, { status: 404 });
+    }
+
+    const response = NextResponse.json(
+      { success: true, message: "Book deleted successfully." },
+      { status: 200 }
+    );
+    return withCORS(req, response);
+  } catch (error: any) {
+    console.error("DELETE Error:", error);
+    const response = NextResponse.json(
+      { success: false, message: "Server error.", error: error.message },
+      { status: 500 }
+    );
+    return withCORS(req, response);
+  }
 }
+
+export const revalidate = 0;
