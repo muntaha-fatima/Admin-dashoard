@@ -811,17 +811,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Book } from "@/models/books"; // Make sure the path is correct
-import { withCORS } from "@/lib/withCORS";
 
-
-
-const allowedOrigins: string[] = [
-  "https://frontend-rho-jet-76.vercel.app",
-  "https://book-website-rho-sooty.vercel.app",
+const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
+  "https://frontend-rho-jet-76.vercel.app",
+  "https://book-website-rho-sooty.vercel.app"
 ];
 
+
+function withCORS(req: NextRequest, res: NextResponse) {
+  const origin = req.headers.get("origin") || "";
+
+  if (allowedOrigins.includes(origin)) {
+    res.headers.set("Access-Control-Allow-Origin", origin);
+  }
+
+  res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  return res;
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return withCORS(req, NextResponse.json({}, { status: 200 }));
+}
 
 export const revalidate = 0; 
 
@@ -837,19 +850,13 @@ export async function POST(req: NextRequest) {
     }
 
 }
-
 export async function GET(req: NextRequest) {
-    const res = NextResponse.next();
-    withCORS(res, req); // yahan CORS headers apply ho jaenge
-
-    try {
-        await connectToDatabase();
-        const books = await Book.find({});
-        return NextResponse.json(books, { status: 200 });
-    } catch (error) {
-        return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
-    }
+  await connectToDatabase();
+  const books = await Book.find({});
+  const res = NextResponse.json(books, { status: 200 });
+  return withCORS(req, res);
 }
+
 
 
 export async function PUT(req: NextRequest) {
