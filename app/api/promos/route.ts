@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Promo } from "@/models/promos"; // Make sure the path is correct
+import { withCORS } from "@/lib/withCORS"; // ✅ use this
 
 const allowedOrigins = [
   "https://frontend-rho-jet-76.vercel.app",
@@ -8,17 +9,6 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
 ];
-
-export function withCORS(res: NextResponse, req: NextRequest): NextResponse {
-  const origin = req.headers.get("origin");
-  if (origin && (allowedOrigins.includes(origin) || process.env.NODE_ENV === "development")) {
-    res.headers.set("Access-Control-Allow-Origin", origin);
-  }
-  res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  return res;
-}
-
 
 export const revalidate = 0;
 
@@ -35,14 +25,16 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-    try {
-        await connectToDatabase();
-        const promos = await Promo.find({});
-        return NextResponse.json(promos, { status: 200 });
-    } catch (error) {
-        console.error("GET error:", error);
-        return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
-    }
+  try {
+    await connectToDatabase();
+    const promos = await Promo.find({});
+    const res = NextResponse.json(promos, { status: 200 });
+    return withCORS(res, req); // ✅ wrap response
+  } catch (error) {
+    console.error(error);
+    const res = NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
+    return withCORS(res, req);
+  }
 }
 
 export async function PUT(req: NextRequest) {

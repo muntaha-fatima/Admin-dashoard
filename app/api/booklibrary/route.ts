@@ -811,6 +811,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Book } from "@/models/books"; // Make sure the path is correct
+import { withCORS } from "@/lib/withCORS";
 
 
 
@@ -821,15 +822,6 @@ const allowedOrigins = [
   "http://localhost:3001",
 ];
 
-export function withCORS(res: NextResponse, req: NextRequest): NextResponse {
-  const origin = req.headers.get("origin");
-  if (origin && (allowedOrigins.includes(origin) || process.env.NODE_ENV === "development")) {
-    res.headers.set("Access-Control-Allow-Origin", origin);
-  }
-  res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  return res;
-}
 
 export const revalidate = 0; 
 
@@ -843,17 +835,22 @@ export async function POST(req: NextRequest) {
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
+
 }
+
 export async function GET(req: NextRequest) {
+    const res = NextResponse.next();
+    withCORS(res, req); // yahan CORS headers apply ho jaenge
+
     try {
         await connectToDatabase();
         const books = await Book.find({});
         return NextResponse.json(books, { status: 200 });
     } catch (error) {
-        console.error("GET error:", error);
         return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
     }
 }
+
 
 export async function PUT(req: NextRequest) {
     try {
