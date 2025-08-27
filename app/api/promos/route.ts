@@ -2,40 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Promo } from "@/models/promos";
 
-export const revalidate = 0; // Disable caching for fresh data
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "https://frontend-rho-jet-76.vercel.app",
+  "https://book-website-rho-sooty.vercel.app"
+];
 
-// 📌 CREATE Promo
-export async function POST(req: NextRequest) {
-  try {
-    await connectToDatabase();
-    const body = await req.json();
-    const newPromo = new Promo(body);
-    await newPromo.save();
+function withCORS(req: NextRequest, res: NextResponse) {
+  const origin = req.headers.get("origin") || "";
 
-    return NextResponse.json({ success: true, data: newPromo }, { status: 201 });
-  } catch (error: any) {
-    console.error("POST error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+  if (allowedOrigins.includes(origin)) {
+    res.headers.set("Access-Control-Allow-Origin", origin);
   }
+
+  res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  return res;
 }
 
-// 📌 READ All Promos
-export async function GET() {
-  try {
-    await connectToDatabase();
-    const promos = await Promo.find({});
-    return NextResponse.json({ success: true, data: promos }, { status: 200 });
-  } catch (error: any) {
-    console.error("GET error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
-  }
+export async function OPTIONS(req: NextRequest) {
+  return withCORS(req, NextResponse.json({}, { status: 200 }));
 }
+
+export async function GET(req: NextRequest) {
+  await connectToDatabase();
+  const promos = await Promo.find({});
+  const res = NextResponse.json(promos, { status: 200 });
+  return withCORS(req, res);
+}
+
 
 // 📌 UPDATE Promo
 export async function PUT(req: NextRequest) {
