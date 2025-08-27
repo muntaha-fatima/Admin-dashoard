@@ -1588,15 +1588,15 @@ useEffect(() => {
     setFormData(newContentType === "book" ? initialBookState : initialPromoState);
   };
 
-
 const handleSubmit = async (e: FormEvent) => {
   e.preventDefault();
   setLoading(true);
 
   const method = isEditMode ? "PUT" : "POST";
-  const endpoint = isEditMode
-    ? `/api/booklibrary?id=${formData._id}`
-    : "/api/booklibrary";
+  // Content type ke hisaab se endpoint select karein
+  const endpoint = isBook(formData)
+    ? `/api/booklibrary${isEditMode ? `?id=${formData._id}` : ''}`
+    : `/api/promos${isEditMode ? `?id=${formData._id}` : ''}`;
 
   let payload: Partial<Book> | Partial<Promo>;
 
@@ -1702,18 +1702,19 @@ const handleSubmit = async (e: FormEvent) => {
     setFormData(initialBookState);
     setIsEditMode(false);
   };
-
-  const filteredContents = allContent.filter(c => {
-    const title = c.title;
-    const author = isBook(c) ? c.author : "";
-    const searchString = `${title} ${author}`.toLowerCase();
-    // Sirf books ko alag karen
-
-
-    return searchString.includes(searchTerm.toLowerCase());
-  });
-  console.log("Filtered Contents:", filteredContents); // ✅ Yeh line lagayen
-  return (
+const filteredContents = allContent.filter(c => {
+  let searchString = "";
+if (isBook(c)) {
+// Books ke liye, title aur author dono search karein
+ searchString = `${c.title} ${c.author}`.toLowerCase();
+} else if (isPromo(c)) {
+ // Promo images ke liye, sirf title search karein
+ searchString = c.title.toLowerCase();
+ }
+ return searchString.includes(searchTerm.toLowerCase());
+});
+console.log("Filtered Contents:", filteredContents); // ✅ Yeh line lagayen
+return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 font-sans">
       {/* Sidebar */}
       <aside className="w-72 bg-white shadow-xl border-r border-slate-200 flex flex-col">
