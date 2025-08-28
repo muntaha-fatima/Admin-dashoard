@@ -9,78 +9,87 @@ const allowedOrigins = [
   "https://book-website-rho-sooty.vercel.app",
 ];
 
-// Handles CORS headers for all responses
+function getAllowOrigin(origin: string | null) {
+  if (!origin) return "";
+  if (process.env.NODE_ENV === "development") return origin;
+  if (allowedOrigins.includes(origin)) return origin;
+  return "";
+}
+
 function withCORS(req: NextRequest, res: NextResponse): NextResponse {
   const origin = req.headers.get("origin");
-  if (origin && allowedOrigins.includes(origin)) {
-    res.headers.set("Access-Control-Allow-Origin", origin);
+  const allowOrigin = getAllowOrigin(origin);
+  if (allowOrigin) {
+    res.headers.set("Access-Control-Allow-Origin", allowOrigin);
+    res.headers.set("Vary", "Origin");
   }
   res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   return res;
 }
 
-// Handles preflight CORS requests
+// ✅ Helper: Convert relative URL to absolute
+function makeAbsoluteUrl(url: string | undefined, req: NextRequest) {
+  if (!url || url.trim() === "") return "";
+  if (url.startsWith("http")) return url;
+  const protocol = req.headers.get("x-forwarded-proto") || "http";
+  const host = req.headers.get("host") || "localhost:3000";
+  return `${protocol}://${host}${url.startsWith("/") ? url : "/" + url}`;
+}
+
+// CORS preflight
 export async function OPTIONS(req: NextRequest) {
   const response = new NextResponse(null, { status: 204 });
   return withCORS(req, response);
 }
 
-// POST (Create/Update) a promo image
+// 📌 POST (Create/Update) Promo
 export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
     const data = await req.json();
 
-    if (!data.promoImageUrl) {
-      return NextResponse.json(
-        { success: false, message: "Missing required field: promoImageUrl" },
-        { status: 400 }
-      );
+    if (!data.promoImageUrl?.trim()) {
+      return withCORS(req, NextResponse.json({ success: false, message: "Missing promoImageUrl" }, { status: 400 }));
     }
-    
+
+    const absoluteUrl = makeAbsoluteUrl(data.promoImageUrl, req);
+
     let promo = await Promo.findOne();
     if (promo) {
-      promo.promoImageUrl = data.promoImageUrl;
+      promo.promoImageUrl = absoluteUrl;
       await promo.save();
     } else {
-      promo = new Promo({ promoImageUrl: data.promoImageUrl });
+      promo = new Promo({ promoImageUrl: absoluteUrl });
       await promo.save();
     }
-    
-    const response = NextResponse.json(
-      { success: true, message: "Promo image saved successfully.", data: promo },
-      { status: 201 }
-    );
-    return withCORS(req, response);
+
+    return withCORS(req, NextResponse.json({ success: true, message: "Promo saved", data: promo }, { status: 201 }));
   } catch (error: any) {
     console.error("POST Error:", error);
-    const response = NextResponse.json(
-      { success: false, message: "Server error.", error: error.message },
-      { status: 500 }
-    );
-    return withCORS(req, response);
+    return withCORS(req, NextResponse.json({ success: false, message: "Server error", error: error.message }, { status: 500 }));
   }
 }
 
-// GET all promo images
+// 📌 GET all Promos
 export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
     const promos = await Promo.find({});
-    const response = NextResponse.json({ success: true, data: promos }, { status: 200 });
-    return withCORS(req, response);
+
+    const promosWithAbsoluteUrls = promos.map(p => ({
+      ...p.toObject(),
+      promoImageUrl: makeAbsoluteUrl(p.promoImageUrl, req),
+    }));
+
+    return withCORS(req, NextResponse.json({ success: true, data: promosWithAbsoluteUrls }, { status: 200 }));
   } catch (error: any) {
     console.error("GET Error:", error);
-    const response = NextResponse.json(
-      { success: false, message: "Server error.", error: error.message },
-      { status: 500 }
-    );
-    return withCORS(req, response);
+    return withCORS(req, NextResponse.json({ success: false, message: "Server error", error: error.message }, { status: 500 }));
   }
 }
 
-// PUT (Update) a promo image by ID
+// 📌 PUT (Update) Promo by ID
 export async function PUT(req: NextRequest) {
   try {
     await connectToDatabase();
@@ -88,57 +97,34 @@ export async function PUT(req: NextRequest) {
     const id = searchParams.get("id");
     const data = await req.json();
 
-    if (!id) {
-      return NextResponse.json({ success: false, message: "ID missing." }, { status: 400 });
-    }
+    if (!id) return withCORS(req, NextResponse.json({ success: false, message: "ID missing" }, { status: 400 }));
+    if (data.promoImageUrl) data.promoImageUrl = makeAbsoluteUrl(data.promoImageUrl, req);
 
-    const updatedPromo = await Promo.findByIdAndUpdate(id, data, { new: true });
-    if (!updatedPromo) {
-      return NextResponse.json({ success: false, message: "Promo not found." }, { status: 404 });
-    }
+    const updatedPromo = await Promo.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+    if (!updatedPromo) return withCORS(req, NextResponse.json({ success: false, message: "Promo not found" }, { status: 404 }));
 
-    const response = NextResponse.json(
-      { success: true, message: "Promo updated successfully.", data: updatedPromo },
-      { status: 200 }
-    );
-    return withCORS(req, response);
+    return withCORS(req, NextResponse.json({ success: true, message: "Promo updated", data: updatedPromo }, { status: 200 }));
   } catch (error: any) {
     console.error("PUT Error:", error);
-    const response = NextResponse.json(
-      { success: false, message: "Server error.", error: error.message },
-      { status: 500 }
-    );
-    return withCORS(req, response);
+    return withCORS(req, NextResponse.json({ success: false, message: "Server error", error: error.message }, { status: 500 }));
   }
 }
 
-// DELETE a promo image by ID
+// 📌 DELETE Promo by ID
 export async function DELETE(req: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
-    if (!id) {
-      return NextResponse.json({ success: false, message: "ID missing." }, { status: 400 });
-    }
+    if (!id) return withCORS(req, NextResponse.json({ success: false, message: "ID missing" }, { status: 400 }));
 
     const deletedPromo = await Promo.findByIdAndDelete(id);
-    if (!deletedPromo) {
-      return NextResponse.json({ success: false, message: "Promo not found." }, { status: 404 });
-    }
+    if (!deletedPromo) return withCORS(req, NextResponse.json({ success: false, message: "Promo not found" }, { status: 404 }));
 
-    const response = NextResponse.json(
-      { success: true, message: "Promo deleted successfully." },
-      { status: 200 }
-    );
-    return withCORS(req, response);
+    return withCORS(req, NextResponse.json({ success: true, message: "Promo deleted successfully" }, { status: 200 }));
   } catch (error: any) {
     console.error("DELETE Error:", error);
-    const response = NextResponse.json(
-      { success: false, message: "Server error.", error: error.message },
-      { status: 500 }
-    );
-    return withCORS(req, response);
+    return withCORS(req, NextResponse.json({ success: false, message: "Server error", error: error.message }, { status: 500 }));
   }
 }

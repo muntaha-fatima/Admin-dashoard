@@ -806,7 +806,6 @@
 //   return withCORS(res, req);
 // }
 
-
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Book } from "@/models/books";
@@ -821,14 +820,11 @@ const allowedOrigins = [
 function getAllowOrigin(origin: string | null) {
   if (!origin) return "";
   if (process.env.NODE_ENV === "development") {
-    console.log("🔧 Dev mode - Allowing origin:", origin);
     return origin;
   }
   if (allowedOrigins.includes(origin)) {
-    console.log("✅ Prod mode - Allowing origin:", origin);
     return origin;
   }
-  console.log("❌ Origin not allowed:", origin);
   return "";
 }
 
@@ -844,27 +840,35 @@ function withCORS(res: NextResponse, req: NextRequest) {
   return res;
 }
 
+// ✅ Helper: Convert relative URL to absolute
+function makeAbsoluteUrl(url: string | undefined, req: NextRequest) {
+  if (!url || url.trim() === "") return "";
+  if (url.startsWith("http")) return url;
+  const protocol = req.headers.get("x-forwarded-proto") || "http";
+  const host = req.headers.get("host") || "localhost:3000";
+  return `${protocol}://${host}${url.startsWith("/") ? url : "/" + url}`;
+}
+
 // 📌 CREATE Book
 export async function POST(req: NextRequest) {
   try {
-    console.log("📖 Received POST request for book");
     await connectToDatabase();
-
     const data = await req.json();
     const { contentType, title, author, description, imageUrl, pdfUrl, isFeatured } = data;
 
     if (contentType !== "book") {
-      return withCORS(
-        NextResponse.json({ success: false, message: "Invalid contentType: must be 'book'" }, { status: 400 }),
-        req
-      );
+      return withCORS(NextResponse.json({ success: false, message: "Invalid contentType: must be 'book'" }, { status: 400 }), req);
     }
 
-    if (!title || !author || !description || !imageUrl || !pdfUrl || isFeatured === undefined) {
-      return withCORS(
-        NextResponse.json({ success: false, message: "Missing required book fields" }, { status: 400 }),
-        req
-      );
+    if (!title?.trim() || !author?.trim() || !description?.trim() || !imageUrl?.trim() || !pdfUrl?.trim() || isFeatured === undefined) {
+      return withCORS(NextResponse.json({ success: false, message: "Missing or invalid book fields" }, { status: 400 }), req);
+    }
+
+    const absoluteImageUrl = makeAbsoluteUrl(imageUrl, req);
+    const absolutePdfUrl = makeAbsoluteUrl(pdfUrl, req);
+
+    if (!absoluteImageUrl || !absolutePdfUrl) {
+      return withCORS(NextResponse.json({ success: false, message: "Invalid imageUrl or pdfUrl" }, { status: 400 }), req);
     }
 
     const book = new Book({
@@ -872,125 +876,91 @@ export async function POST(req: NextRequest) {
       title: title.trim(),
       author: author.trim(),
       description: description.trim(),
-      imageUrl: imageUrl.trim(),
-      pdfUrl: pdfUrl.trim(),
+      imageUrl: absoluteImageUrl,
+      pdfUrl: absolutePdfUrl,
       isFeatured: !!isFeatured,
     });
 
     await book.save();
-    return withCORS(
-      NextResponse.json({ success: true, message: "Book added successfully", item: book }, { status: 201 }),
-      req
-    );
+    return withCORS(NextResponse.json({ success: true, message: "Book added successfully", item: book }, { status: 201 }), req);
   } catch (error) {
-    console.error("❌ POST Error:", error);
-    return withCORS(
-      NextResponse.json({ success: false, message: "Server error" }, { status: 500 }),
-      req
-    );
+    console.error("POST Error:", error);
+    return withCORS(NextResponse.json({ success: false, message: "Server error" }, { status: 500 }), req);
   }
 }
 
 // 📌 READ Books
 export async function GET(req: NextRequest) {
   try {
-    console.log("📖 Received GET request for books");
     await connectToDatabase();
-
     const books = await Book.find({});
-    return withCORS(
-      NextResponse.json({ success: true, data: books }, { status: 200 }),
-      req
-    );
+
+    const booksWithAbsoluteUrls = books.map(book => ({
+      ...book.toObject(),
+      imageUrl: makeAbsoluteUrl(book.imageUrl, req),
+      pdfUrl: makeAbsoluteUrl(book.pdfUrl, req),
+    }));
+
+    return withCORS(NextResponse.json({ success: true, data: booksWithAbsoluteUrls }, { status: 200 }), req);
   } catch (error) {
-    console.error("❌ GET Error:", error);
-    return withCORS(
-      NextResponse.json({ success: false, message: "Server error" }, { status: 500 }),
-      req
-    );
+    console.error("GET Error:", error);
+    return withCORS(NextResponse.json({ success: false, message: "Server error" }, { status: 500 }), req);
   }
 }
 
 // 📌 UPDATE Book
 export async function PUT(req: NextRequest) {
   try {
-    console.log("✏️ Received PUT request for book");
     await connectToDatabase();
-
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const data = await req.json();
 
     if (!id) {
-      return withCORS(
-        NextResponse.json({ success: false, message: "ID is required" }, { status: 400 }),
-        req
-      );
+      return withCORS(NextResponse.json({ success: false, message: "ID is required" }, { status: 400 }), req);
     }
 
-    const updatedBook = await Book.findByIdAndUpdate(id, data, { new: true });
+    if (data.imageUrl) data.imageUrl = makeAbsoluteUrl(data.imageUrl, req);
+    if (data.pdfUrl) data.pdfUrl = makeAbsoluteUrl(data.pdfUrl, req);
+
+    const updatedBook = await Book.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 
     if (!updatedBook) {
-      return withCORS(
-        NextResponse.json({ success: false, message: "Book not found" }, { status: 404 }),
-        req
-      );
+      return withCORS(NextResponse.json({ success: false, message: "Book not found" }, { status: 404 }), req);
     }
 
-    return withCORS(
-      NextResponse.json({ success: true, message: "Book updated successfully", item: updatedBook }, { status: 200 }),
-      req
-    );
+    return withCORS(NextResponse.json({ success: true, message: "Book updated successfully", item: updatedBook }, { status: 200 }), req);
   } catch (error) {
-    console.error("❌ PUT Error:", error);
-    return withCORS(
-      NextResponse.json({ success: false, message: "Server error" }, { status: 500 }),
-      req
-    );
+    console.error("PUT Error:", error);
+    return withCORS(NextResponse.json({ success: false, message: "Server error" }, { status: 500 }), req);
   }
 }
 
 // 📌 DELETE Book
 export async function DELETE(req: NextRequest) {
   try {
-    console.log("🗑️ Received DELETE request for book");
     await connectToDatabase();
-
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return withCORS(
-        NextResponse.json({ success: false, message: "ID is required" }, { status: 400 }),
-        req
-      );
+      return withCORS(NextResponse.json({ success: false, message: "ID is required" }, { status: 400 }), req);
     }
 
     const deletedBook = await Book.findByIdAndDelete(id);
-
     if (!deletedBook) {
-      return withCORS(
-        NextResponse.json({ success: false, message: "Book not found" }, { status: 404 }),
-        req
-      );
+      return withCORS(NextResponse.json({ success: false, message: "Book not found" }, { status: 404 }), req);
     }
 
-    return withCORS(
-      NextResponse.json({ success: true, message: "Book deleted successfully" }, { status: 200 }),
-      req
-    );
+    return withCORS(NextResponse.json({ success: true, message: "Book deleted successfully" }, { status: 200 }), req);
   } catch (error) {
-    console.error("❌ DELETE Error:", error);
-    return withCORS(
-      NextResponse.json({ success: false, message: "Server error" }, { status: 500 }),
-      req
-    );
+    console.error("DELETE Error:", error);
+    return withCORS(NextResponse.json({ success: false, message: "Server error" }, { status: 500 }), req);
   }
 }
 
 // 📌 CORS Preflight
 export async function OPTIONS(req: NextRequest) {
-  console.log("🔄 CORS Preflight request for Book Library");
   const res = new NextResponse(null, { status: 204 });
   return withCORS(res, req);
 }
