@@ -806,147 +806,191 @@
 //   return withCORS(res, req);
 // }
 
+
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Book } from "@/models/books";
 
 const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:3001",
   "https://frontend-rho-jet-76.vercel.app",
   "https://book-website-rho-sooty.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3001",
 ];
 
-function withCORS(req: NextRequest, res: NextResponse): NextResponse {
+function getAllowOrigin(origin: string | null) {
+  if (!origin) return "";
+  if (process.env.NODE_ENV === "development") {
+    console.log("🔧 Dev mode - Allowing origin:", origin);
+    return origin;
+  }
+  if (allowedOrigins.includes(origin)) {
+    console.log("✅ Prod mode - Allowing origin:", origin);
+    return origin;
+  }
+  console.log("❌ Origin not allowed:", origin);
+  return "";
+}
+
+function withCORS(res: NextResponse, req: NextRequest) {
   const origin = req.headers.get("origin");
-  if (origin && allowedOrigins.includes(origin)) {
-    res.headers.set("Access-Control-Allow-Origin", origin);
+  const allowOrigin = getAllowOrigin(origin);
+  if (allowOrigin) {
+    res.headers.set("Access-Control-Allow-Origin", allowOrigin);
+    res.headers.set("Vary", "Origin");
   }
   res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   return res;
 }
 
-export async function OPTIONS(req: NextRequest) {
-  const response = new NextResponse(null, { status: 204 });
-  return withCORS(req, response);
-}
-
+// 📌 CREATE Book
 export async function POST(req: NextRequest) {
   try {
+    console.log("📖 Received POST request for book");
     await connectToDatabase();
-    const body = await req.json();
 
-    const { title, author, description, imageUrl, pdfUrl, isFeatured } = body;
+    const data = await req.json();
+    const { contentType, title, author, description, imageUrl, pdfUrl, isFeatured } = data;
 
-    // Validate required fields
-    if (!title || !author || !description || !imageUrl || !pdfUrl || isFeatured === undefined) {
-      return NextResponse.json(
-        { success: false, message: "Missing required fields." },
-        { status: 400 }
+    if (contentType !== "book") {
+      return withCORS(
+        NextResponse.json({ success: false, message: "Invalid contentType: must be 'book'" }, { status: 400 }),
+        req
       );
     }
 
-    const newBook = new Book({
-      title,
-      author,
-      description,
-      imageUrl,
-      pdfUrl,
-      isFeatured,
+    if (!title || !author || !description || !imageUrl || !pdfUrl || isFeatured === undefined) {
+      return withCORS(
+        NextResponse.json({ success: false, message: "Missing required book fields" }, { status: 400 }),
+        req
+      );
+    }
+
+    const book = new Book({
+      contentType: "book",
+      title: title.trim(),
+      author: author.trim(),
+      description: description.trim(),
+      imageUrl: imageUrl.trim(),
+      pdfUrl: pdfUrl.trim(),
+      isFeatured: !!isFeatured,
     });
 
-    await newBook.save();
-    const response = NextResponse.json(
-      { success: true, message: "Book added successfully.", data: newBook },
-      { status: 201 }
+    await book.save();
+    return withCORS(
+      NextResponse.json({ success: true, message: "Book added successfully", item: book }, { status: 201 }),
+      req
     );
-    return withCORS(req, response);
-  } catch (error: any) {
-    console.error("POST Error:", error);
-    const response = NextResponse.json(
-      { success: false, message: "Server error.", error: error.message },
-      { status: 500 }
+  } catch (error) {
+    console.error("❌ POST Error:", error);
+    return withCORS(
+      NextResponse.json({ success: false, message: "Server error" }, { status: 500 }),
+      req
     );
-    return withCORS(req, response);
   }
 }
 
+// 📌 READ Books
 export async function GET(req: NextRequest) {
   try {
+    console.log("📖 Received GET request for books");
     await connectToDatabase();
+
     const books = await Book.find({});
-    const response = NextResponse.json({ success: true, data: books }, { status: 200 });
-    return withCORS(req, response);
-  } catch (error: any) {
-    console.error("GET Error:", error);
-    const response = NextResponse.json(
-      { success: false, message: "Server error.", error: error.message },
-      { status: 500 }
+    return withCORS(
+      NextResponse.json({ success: true, data: books }, { status: 200 }),
+      req
     );
-    return withCORS(req, response);
+  } catch (error) {
+    console.error("❌ GET Error:", error);
+    return withCORS(
+      NextResponse.json({ success: false, message: "Server error" }, { status: 500 }),
+      req
+    );
   }
 }
 
+// 📌 UPDATE Book
 export async function PUT(req: NextRequest) {
   try {
+    console.log("✏️ Received PUT request for book");
     await connectToDatabase();
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const data = await req.json();
 
     if (!id) {
-      return NextResponse.json({ success: false, message: "ID missing." }, { status: 400 });
+      return withCORS(
+        NextResponse.json({ success: false, message: "ID is required" }, { status: 400 }),
+        req
+      );
     }
 
     const updatedBook = await Book.findByIdAndUpdate(id, data, { new: true });
+
     if (!updatedBook) {
-      return NextResponse.json({ success: false, message: "Book not found." }, { status: 404 });
+      return withCORS(
+        NextResponse.json({ success: false, message: "Book not found" }, { status: 404 }),
+        req
+      );
     }
 
-    const response = NextResponse.json(
-      { success: true, message: "Book updated successfully.", data: updatedBook },
-      { status: 200 }
+    return withCORS(
+      NextResponse.json({ success: true, message: "Book updated successfully", item: updatedBook }, { status: 200 }),
+      req
     );
-    return withCORS(req, response);
-  } catch (error: any) {
-    console.error("PUT Error:", error);
-    const response = NextResponse.json(
-      { success: false, message: "Server error.", error: error.message },
-      { status: 500 }
+  } catch (error) {
+    console.error("❌ PUT Error:", error);
+    return withCORS(
+      NextResponse.json({ success: false, message: "Server error" }, { status: 500 }),
+      req
     );
-    return withCORS(req, response);
   }
 }
 
+// 📌 DELETE Book
 export async function DELETE(req: NextRequest) {
   try {
+    console.log("🗑️ Received DELETE request for book");
     await connectToDatabase();
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ success: false, message: "ID missing." }, { status: 400 });
+      return withCORS(
+        NextResponse.json({ success: false, message: "ID is required" }, { status: 400 }),
+        req
+      );
     }
 
     const deletedBook = await Book.findByIdAndDelete(id);
+
     if (!deletedBook) {
-      return NextResponse.json({ success: false, message: "Book not found." }, { status: 404 });
+      return withCORS(
+        NextResponse.json({ success: false, message: "Book not found" }, { status: 404 }),
+        req
+      );
     }
 
-    const response = NextResponse.json(
-      { success: true, message: "Book deleted successfully." },
-      { status: 200 }
+    return withCORS(
+      NextResponse.json({ success: true, message: "Book deleted successfully" }, { status: 200 }),
+      req
     );
-    return withCORS(req, response);
-  } catch (error: any) {
-    console.error("DELETE Error:", error);
-    const response = NextResponse.json(
-      { success: false, message: "Server error.", error: error.message },
-      { status: 500 }
+  } catch (error) {
+    console.error("❌ DELETE Error:", error);
+    return withCORS(
+      NextResponse.json({ success: false, message: "Server error" }, { status: 500 }),
+      req
     );
-    return withCORS(req, response);
   }
 }
 
-export const revalidate = 0;
+// 📌 CORS Preflight
+export async function OPTIONS(req: NextRequest) {
+  console.log("🔄 CORS Preflight request for Book Library");
+  const res = new NextResponse(null, { status: 204 });
+  return withCORS(res, req);
+}

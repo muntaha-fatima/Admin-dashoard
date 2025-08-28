@@ -2035,11 +2035,11 @@ return (
                         ) : isBook(c) && c.imageUrl ? (
                           <div className="aspect-[3/4] overflow-hidden bg-slate-100">
                             <img
-                              src={c.imageUrl || "/placeholder.svg"}
+                              src={c.imageUrl}
                               alt={c.title}
                               className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
                               onError={(e) => {
-                                e.currentTarget.src = "/placeholder.svg?height=300&width=225";
+                                e.currentTarget.src = "";
                                 toast.error(`⚠️ Failed to load image for book: ${c.title}`);
                               }}
                             />
