@@ -42,34 +42,47 @@ export async function OPTIONS(req: NextRequest) {
   const response = new NextResponse(null, { status: 204 });
   return withCORS(req, response);
 }
-
-// 📌 POST (Create/Update) Promo
+// 📌 POST (Create Promo)
 export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
     const data = await req.json();
 
     if (!data.promoImageUrl?.trim()) {
-      return withCORS(req, NextResponse.json({ success: false, message: "Missing promoImageUrl" }, { status: 400 }));
+      return withCORS(
+        req,
+        NextResponse.json(
+          { success: false, message: "Missing promoImageUrl" },
+          { status: 400 }
+        )
+      );
     }
 
     const absoluteUrl = makeAbsoluteUrl(data.promoImageUrl, req);
 
-    let promo = await Promo.findOne();
-    if (promo) {
-      promo.promoImageUrl = absoluteUrl;
-      await promo.save();
-    } else {
-      promo = new Promo({ promoImageUrl: absoluteUrl });
-      await promo.save();
-    }
+    // ✅ Har POST pe naya document create hoga
+    const promo = new Promo({ promoImageUrl: absoluteUrl });
+    await promo.save();
 
-    return withCORS(req, NextResponse.json({ success: true, message: "Promo saved", data: promo }, { status: 201 }));
+    return withCORS(
+      req,
+      NextResponse.json(
+        { success: true, message: "Promo saved", data: promo },
+        { status: 201 }
+      )
+    );
   } catch (error: any) {
     console.error("POST Error:", error);
-    return withCORS(req, NextResponse.json({ success: false, message: "Server error", error: error.message }, { status: 500 }));
+    return withCORS(
+      req,
+      NextResponse.json(
+        { success: false, message: "Server error", error: error.message },
+        { status: 500 }
+      )
+    );
   }
 }
+
 
 // 📌 GET all Promos
 export async function GET(req: NextRequest) {
