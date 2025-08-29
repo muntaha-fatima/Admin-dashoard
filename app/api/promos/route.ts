@@ -27,15 +27,18 @@ function withCORS(req: NextRequest, res: NextResponse): NextResponse {
   res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   return res;
 }
-
-// ✅ Helper: Convert relative URL to absolute
 function makeAbsoluteUrl(url: string | undefined, req: NextRequest) {
   if (!url || url.trim() === "") return "";
   if (url.startsWith("http")) return url;
-  const protocol = req.headers.get("x-forwarded-proto") || "http";
-  const host = req.headers.get("host") || "localhost:3000";
-  return `${protocol}://${host}${url.startsWith("/") ? url : "/" + url}`;
+
+  // ✅ Always prefer base URL from env in production
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    `${req.headers.get("x-forwarded-proto") || "http"}://${req.headers.get("host") || "localhost:3000"}`;
+
+  return `${baseUrl}${url.startsWith("/") ? url : "/" + url}`;
 }
+
 
 // CORS preflight
 export async function OPTIONS(req: NextRequest) {
