@@ -1450,17 +1450,703 @@
 //   }
 
 
+// src/app/admin/dashboard/page.tsx
+
+
+// "use client";
+
+// import React, { useState, useEffect, ChangeEvent, FormEvent, JSX } from "react";
+// import { toast } from "sonner";
+// import { Library, BookOpen, ImageIcon, Edit, Trash2, X, Plus, Users, FileText, Upload, Star, Search, Save, Eye } from "lucide-react";
+// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+// import { Button } from "@/components/ui/button";
+// import { Label } from "@/components/ui/label";
+// import { Input } from "@/components/ui/input";
+// import { Badge } from "@/components/ui/badge";
+
+// interface Book {
+//   _id?: string;
+//   title: string;
+//   author: string;
+//   description: string;
+//   imageUrl: string;
+//   pdfUrl: string;
+//   isFeatured: boolean;
+//   contentType: "book";
+// }
+
+// interface Promo {
+//   _id?: string;
+//   promoImageUrl: string;
+//   isActive: boolean;
+//   title: string;
+//   contentType: "image";
+// }
+
+// type Content = Book | Promo;
+
+// const initialBookState: Book = {
+//   title: "",
+//   author: "",
+//   description: "",
+//   imageUrl: "",
+//   pdfUrl: "",
+//   isFeatured: false,
+//   contentType: "book",
+// };
+
+// const initialPromoState: Promo = {
+//   promoImageUrl: "",
+//   isActive: true,
+//   title: "",
+//   contentType: "image",
+// };
+
+// // Custom Input Field Component
+// const EnhancedInputField = ({
+//   label,
+//   name,
+//   value,
+//   onChange,
+//   required,
+//   icon,
+// }: {
+//   label: string;
+//   name: string;
+//   value: string;
+//   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+//   required?: boolean;
+//   icon: JSX.Element;
+// }) => (
+//   <div className="space-y-2">
+//     <Label htmlFor={name} className="text-base font-semibold text-slate-700">
+//       {label}
+//     </Label>
+//     <div className="relative">
+//       <Input
+//         id={name}
+//         name={name}
+//         value={value}
+//         onChange={onChange}
+//         required={required}
+//         className="pl-10 border-slate-300 focus:ring-blue-500 focus:border-transparent transition-all"
+//       />
+//       <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">
+//         {icon}
+//       </div>
+//     </div>
+//   </div>
+// );
+
+// export default function AdminDashboard() {
+//   const [allContent, setAllContent] = useState<Content[]>([]);
+//   const [formData, setFormData] = useState<Content>(initialBookState);
+//   const [isEditMode, setIsEditMode] = useState(false);
+//   const [loading, setLoading] = useState(false);
+//   const [activeTab, setActiveTab] = useState("add");
+//   const [searchTerm, setSearchTerm] = useState("");
+//   const [error, setError] = useState<string | null>(null);
+
+//   const isBook = (content: Content): content is Book => {
+//     return content.contentType === "book";
+//   };
+
+//   const isPromo = (content: Content): content is Promo => {
+//     return content.contentType === "image";
+//   };
+
+//   const fetchContents = async () => {
+//     try {
+//       setLoading(true);
+//       setError(null);
+      
+//       const booksRes = await fetch("/api/booklibrary", { cache: "no-store" });
+//       const booksData = await booksRes.json();
+//       const books = booksData.data || [];
+
+//       const promosRes = await fetch("/api/promos", { cache: "no-store" });
+//       const promosData = await promosRes.json();
+//       const promos = promosData.data || [];
+
+//       const combinedContent = [...books, ...promos];
+//       setAllContent(combinedContent);
+
+//     } catch (error) {
+//       console.error("Failed to fetch content:", error);
+//       setError("Failed to load content. Please try again.");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchContents();
+//   }, []);
+
+//   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+//     const { name, value } = e.target;
+//     setFormData((prev) => ({
+//       ...prev,
+//       [name]: value,
+//     }));
+//   };
+
+//   const handleCheckboxChange = (e: ChangeEvent<HTMLInputElement>) => {
+//     const { name, checked } = e.target;
+//     setFormData((prev) => ({
+//       ...prev,
+//       [name]: checked,
+//     }));
+//   };
+
+//   const handleContentTypeChange = (e: ChangeEvent<HTMLSelectElement>) => {
+//     const newContentType = e.target.value as "book" | "image";
+//     setFormData(newContentType === "book" ? initialBookState : initialPromoState);
+//   };
+
+//   const handleSubmit = async (e: FormEvent) => {
+//     e.preventDefault();
+//     setLoading(true);
+
+//     const method = isEditMode ? "PUT" : "POST";
+//     const endpoint = isBook(formData)
+//       ? `/api/booklibrary${isEditMode ? `?id=${formData._id}` : ''}`
+//       : `/api/promos${isEditMode ? `?id=${formData._id}` : ''}`;
+
+//     let payload: Partial<Book> | Partial<Promo>;
+
+//     if (isBook(formData)) {
+//       payload = {
+//         title: formData.title,
+//         author: formData.author,
+//         description: formData.description,
+//         imageUrl: formData.imageUrl,
+//         pdfUrl: formData.pdfUrl,
+//         isFeatured: formData.isFeatured,
+//         contentType: "book",
+//       };
+
+//       if (!payload.title || !payload.author || !payload.imageUrl || !payload.pdfUrl) {
+//         toast.error("⚠️ All book fields are required.");
+//         setLoading(false);
+//         return;
+//       }
+//     } else {
+//       payload = {
+//         promoImageUrl: formData.promoImageUrl,
+//         isActive: formData.isActive,
+//         title: formData.title,
+//         contentType: "image",
+//       };
+
+//       if (!payload.promoImageUrl) {
+//         toast.error("⚠️ Promotional image URL is required.");
+//         setLoading(false);
+//         return;
+//       }
+//     }
+
+//     try {
+//       const res = await fetch(endpoint, {
+//         method,
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify(payload),
+//       });
+
+//       if (!res.ok) {
+//         const errorData = await res.json();
+//         throw new Error(
+//           errorData.message || `Failed to ${isEditMode ? "update" : "add"} content.`
+//         );
+//       }
+
+//       toast.success(`✅ Content ${isEditMode ? "updated" : "added"} successfully.`);
+//       fetchContents();
+//       handleCancelEdit();
+//     } catch (err) {
+//       if (err instanceof Error) {
+//         toast.error(`❌ Failed to save content: ${err.message}`);
+//         console.error("Submit error:", err);
+//       } else {
+//         toast.error("❌ An unknown error occurred.");
+//         console.error("Submit error:", err);
+//       }
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handleEdit = (item: Content) => {
+//     setFormData(item);
+//     setIsEditMode(true);
+//     setActiveTab("add");
+//   };
+
+//   const handleDelete = async (id: string, contentType: "book" | "image") => {
+//     const isConfirmed = window.confirm("Are you sure you want to delete this content?");
+//     if (!isConfirmed) return;
+
+//     try {
+//       // ✅ Corrected API endpoint based on content type
+//       const res = await fetch(`/api/${contentType === "book" ? "booklibrary" : "promos"}?id=${id}`, {
+//         method: "DELETE",
+//       });
+
+//       if (!res.ok) {
+//         const errorData = await res.json();
+//         throw new Error(errorData.message || "Failed to delete content.");
+//       }
+
+//       toast.success("✅ Content deleted successfully.");
+//       fetchContents();
+//     } catch (err) {
+//       if (err instanceof Error) {
+//         toast.error(`❌ Failed to delete content: ${err.message}`);
+//         console.error("Delete error:", err);
+//       } else {
+//         toast.error("❌ An unknown error occurred.");
+//         console.error("Delete error:", err);
+//       }
+//     }
+//   };
+
+//   const handleCancelEdit = () => {
+//     setFormData(initialBookState);
+//     setIsEditMode(false);
+//   };
+  
+//   const filteredContents = allContent.filter(c => {
+//     let searchString = "";
+//     if (isBook(c)) {
+//       searchString = `${c.title} ${c.author}`.toLowerCase();
+//     } else if (isPromo(c)) {
+//       searchString = c.title?.toLowerCase() || "";
+//     }
+//     return searchString.includes(searchTerm.toLowerCase());
+//   });
+
+//   return (
+//     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 font-sans">
+//       <aside className="w-72 bg-white shadow-xl border-r border-slate-200 flex flex-col">
+//         <div className="p-6 border-b border-slate-200">
+//           <div className="flex items-center gap-3 mb-6">
+//             <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-md">
+//               <Library className="w-6 h-6 text-white" />
+//             </div>
+//             <div>
+//               <h2 className="text-xl font-bold text-slate-800">Admin Panel</h2>
+//               <p className="text-sm text-slate-500">Books & Promo Management</p>
+//             </div>
+//           </div>
+//           {isEditMode && (
+//             <div className="bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-lg text-white mb-4 shadow-md">
+//               <div className="flex items-center justify-between">
+//                 <div>
+//                   <p className="text-orange-100 text-sm">Editing Mode</p>
+//                   <p className="font-bold truncate text-lg">
+//                     {isBook(formData) ? formData.title : formData.title || "Untitled"}
+//                   </p>
+//                 </div>
+//                 <Edit className="w-6 h-6 text-orange-200" />
+//               </div>
+//             </div>
+//           )}
+//           <div className="grid grid-cols-1 gap-3 mb-6">
+//             <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg text-white shadow-md">
+//               <div className="flex items-center justify-between">
+//                 <div>
+//                   <p className="text-blue-100 text-sm">Total Entries</p>
+//                   <p className="text-2xl font-bold">{allContent.length}</p>
+//                 </div>
+//                 <BookOpen className="w-8 h-8 text-blue-200 opacity-70" />
+//               </div>
+//             </div>
+//             <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-lg text-white shadow-md">
+//               <div className="flex items-center justify-between">
+//                 <div>
+//                   <p className="text-purple-100 text-sm">Books</p>
+//                   <p className="text-2xl font-bold">{allContent.filter(c => c.contentType === "book").length}</p>
+//                 </div>
+//                 <BookOpen className="w-8 h-8 text-purple-200 opacity-70" />
+//               </div>
+//             </div>
+//             <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg text-white shadow-md">
+//               <div className="flex items-center justify-between">
+//                 <div>
+//                   <p className="text-green-100 text-sm">Promo Images</p>
+//                   <p className="text-2xl font-bold">{allContent.filter(c => c.contentType === "image").length}</p>
+//                 </div>
+//                 <ImageIcon className="w-8 h-8 text-green-200 opacity-70" />
+//               </div>
+//             </div>
+//             <div className="bg-gradient-to-r from-yellow-500 to-orange-600 p-4 rounded-lg text-white shadow-md">
+//               <div className="flex items-center justify-between">
+//                 <div>
+//                   <p className="text-yellow-100 text-sm">Featured</p>
+//                   <p className="text-2xl font-bold">{allContent.filter(c => isBook(c) && c.isFeatured).length}</p>
+//                 </div>
+//                 <Star className="w-8 h-8 text-yellow-200 opacity-70" />
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//         <nav className="p-6 space-y-2 flex-1">
+//           <button
+//             onClick={() => { setActiveTab("add"); handleCancelEdit(); }}
+//             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+//               activeTab === "add" ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg" : "text-slate-600 hover:bg-slate-100"
+//             }`}
+//           >
+//             {isEditMode ? <Edit className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+//             <span className="font-medium">{isEditMode ? "Edit Content" : "Add New Content"}</span>
+//           </button>
+//           <button
+//             onClick={() => setActiveTab("view")}
+//             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+//               activeTab === "view" ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg" : "text-slate-600 hover:bg-slate-100"
+//             }`}
+//           >
+//             <Eye className="w-5 h-5" />
+//             <span className="font-medium">View All Content</span>
+//           </button>
+//           {isEditMode && (
+//             <button
+//               onClick={handleCancelEdit}
+//               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200"
+//             >
+//               <X className="w-5 h-5" />
+//               <span className="font-medium">Cancel Edit</span>
+//             </button>
+//           )}
+//         </nav>
+//         <div className="p-6 border-t border-slate-200 text-sm text-slate-500">
+//           <p>&copy; {new Date().getFullYear()} Book Library. All rights reserved.</p>
+//         </div>
+//       </aside>
+//       <main className="flex-1 overflow-y-auto">
+//         <header className="bg-white shadow-sm border-b border-slate-200 p-6">
+//           <div className="flex items-center justify-between">
+//             <div>
+//               <h1 className="text-3xl font-bold text-slate-800">
+//                 {activeTab === "add" ? (isEditMode ? "✏️ Edit Content" : "📚 Add New Content") : "📖 Content Management"}
+//               </h1>
+//               <p className="text-slate-600 mt-1">
+//                 {activeTab === "add"
+//                   ? isEditMode
+//                     ? `Editing: ${isBook(formData) ? formData.title : formData.title || "Untitled"}`
+//                     : "Add books or promotional images to your library"
+//                   : "Manage your books and promotional images"}
+//               </p>
+//             </div>
+//             {activeTab === "view" && (
+//               <div className="flex items-center gap-4">
+//                 <div className="relative">
+//                   <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+//                   <Input
+//                     placeholder="Search content..."
+//                     value={searchTerm}
+//                     onChange={(e) => setSearchTerm(e.target.value)}
+//                     className="pl-10 w-64 border-slate-300 focus:ring-blue-500 focus:border-transparent"
+//                   />
+//                 </div>
+//               </div>
+//             )}
+//           </div>
+//         </header>
+//         <div className="p-6">
+//           {activeTab === "add" ? (
+//             <Card className="shadow-xl border-0 bg-white rounded-xl">
+//               <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b rounded-t-xl p-6">
+//                 <CardTitle className="flex items-center gap-3 text-2xl font-bold text-slate-800">
+//                   {isEditMode ? <Edit className="w-6 h-6" /> : <Upload className="w-6 h-6" />}
+//                   {isEditMode ? "Edit Content Details" : "Add New Content"}
+//                 </CardTitle>
+//                 <CardDescription className="text-slate-600">
+//                   {isEditMode ? "Update the content information below" : "Fill in the required information for the book or promotional image"}
+//                 </CardDescription>
+//               </CardHeader>
+//               <CardContent className="p-8">
+//                 <form onSubmit={handleSubmit} className="space-y-8">
+//                   <div className="space-y-2">
+//                     <Label htmlFor="contentType" className="text-base font-semibold text-slate-700">
+//                       Content Type
+//                     </Label>
+//                     <select
+//                       name="contentType"
+//                       id="contentType"
+//                       className="w-full border border-slate-300 rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-700"
+//                       value={formData.contentType}
+//                       onChange={handleContentTypeChange}
+//                       disabled={isEditMode}
+//                     >
+//                       <option value="book">📖 Book</option>
+//                       <option value="image">🖼️ Promotional Image</option>
+//                     </select>
+//                   </div>
+//                   {isBook(formData) ? (
+//                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                       <EnhancedInputField
+//                         name="title"
+//                         label="Book Title"
+//                         value={formData.title}
+//                         onChange={handleInputChange}
+//                         required
+//                         icon={<BookOpen className="w-4 h-4 text-slate-500" />}
+//                       />
+//                       <EnhancedInputField
+//                         name="author"
+//                         label="Author Name"
+//                         value={formData.author}
+//                         onChange={handleInputChange}
+//                         required
+//                         icon={<Users className="w-4 h-4 text-slate-500" />}
+//                       />
+//                       <div className="md:col-span-2">
+//                         <div className="space-y-2 relative">
+//                           <Label htmlFor="description" className="text-base font-semibold text-slate-700">Description</Label>
+//                           <textarea
+//                             id="description"
+//                             name="description"
+//                             value={formData.description}
+//                             onChange={handleInputChange}
+//                             required
+//                             className="w-full border border-slate-300 rounded-lg p-3 pl-10 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-700 min-h-[100px]"
+//                           />
+//                           <div className="absolute left-3 top-1/2 transform -translate-y-1/2 mt-3"><FileText className="w-4 h-4 text-slate-500" /></div>
+//                         </div>
+//                       </div>
+//                       <EnhancedInputField
+//                         name="imageUrl"
+//                         label="Cover Image URL"
+//                         value={formData.imageUrl}
+//                         onChange={handleInputChange}
+//                         required
+//                         icon={<ImageIcon className="w-4 h-4 text-slate-500" />}
+//                       />
+//                       <EnhancedInputField
+//                         name="pdfUrl"
+//                         label="PDF File URL"
+//                         value={formData.pdfUrl}
+//                         onChange={handleInputChange}
+//                         required
+//                         icon={<FileText className="w-4 h-4 text-slate-500" />}
+//                       />
+//                     </div>
+//                   ) : (
+//                     <div className="space-y-6">
+//                       <EnhancedInputField
+//                         name="title"
+//                         label="Promo Title"
+//                         value={formData.title || ""}
+//                         onChange={handleInputChange}
+//                         icon={<BookOpen className="w-4 h-4 text-slate-500" />}
+//                       />
+//                       <EnhancedInputField
+//                         name="promoImageUrl"
+//                         label="Promotional Image URL"
+//                         value={formData.promoImageUrl}
+//                         onChange={handleInputChange}
+//                         required
+//                         icon={<ImageIcon className="w-4 h-4 text-slate-500" />}
+//                       />
+//                     </div>
+//                   )}
+//                   <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-200 shadow-sm">
+//                     <input
+//                       type="checkbox"
+//                       id="isFeatured"
+//                       name={isBook(formData) ? "isFeatured" : "isActive"}
+//                       checked={isBook(formData) ? formData.isFeatured : formData.isActive}
+//                       onChange={handleCheckboxChange}
+//                       className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+//                     />
+//                     <div>
+//                       <Label htmlFor="isFeatured" className="font-medium text-slate-700 cursor-pointer">
+//                         {isBook(formData) ? "Is Featured" : "Is Active"}
+//                       </Label>
+//                       <p className="text-sm text-slate-600">
+//                         This {formData.contentType === "book" ? "book" : "promo image"} will be featured on the main page.
+//                       </p>
+//                     </div>
+//                   </div>
+//                   <div className="flex flex-col sm:flex-row gap-4 pt-4">
+//                     <Button
+//                       type="submit"
+//                       disabled={loading}
+//                       className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
+//                     >
+//                       {loading ? (
+//                         <div className="flex items-center gap-2">
+//                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+//                           {isEditMode ? "Updating..." : "Processing..."}
+//                         </div>
+//                       ) : (
+//                         <div className="flex items-center gap-2">
+//                           {isEditMode ? <Save className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
+//                           {isEditMode ? "Update Content" : "Add Content"}
+//                         </div>
+//                       )}
+//                     </Button>
+//                     <Button
+//                       type="button"
+//                       variant="outline"
+//                       onClick={handleCancelEdit}
+//                       className="flex-1 px-8 py-3 text-lg rounded-xl border-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold"
+//                     >
+//                       <X className="w-5 h-5 mr-2" />
+//                       Cancel
+//                     </Button>
+//                   </div>
+//                 </form>
+//               </CardContent>
+//             </Card>
+//           ) : (
+//             <div className="space-y-6">
+//               {error ? (
+//                 <Card className="p-12 text-center bg-white shadow-lg rounded-xl">
+//                   <X className="w-16 h-16 text-red-400 mx-auto mb-4" />
+//                   <h3 className="text-xl font-semibold text-slate-600 mb-2">Error</h3>
+//                   <p className="text-red-500">{error}</p>
+//                 </Card>
+//               ) : loading ? (
+//                  <div className="flex items-center justify-center py-20">
+//                   <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+//                  </div>
+//               ) : filteredContents.length === 0 ? (
+//                 <Card className="p-12 text-center bg-white shadow-lg rounded-xl">
+//                   <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+//                   <h3 className="text-xl font-semibold text-slate-600 mb-2">No Content Found</h3>
+//                   <p className="text-slate-500">
+//                     {searchTerm
+//                       ? "No content matches your search criteria."
+//                       : "Start by adding your first book or promo image to the library."}
+//                   </p>
+//                   {!searchTerm && (
+//                     <Button
+//                       onClick={() => setActiveTab("add")}
+//                       className="mt-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 px-6 rounded-xl shadow-md"
+//                     >
+//                       <Plus className="w-4 h-4 mr-2" />
+//                       Add First Content
+//                     </Button>
+//                   )}
+//                 </Card>
+//               ) : (
+//                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+//                   {filteredContents.map((c: Content) => (
+//                     <Card
+//                       key={c._id}
+//                       className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-200 bg-white border-0 rounded-xl"
+//                     >
+//                       <div className="relative">
+//                         {isPromo(c) && c.promoImageUrl ? (
+//                           <div className="aspect-[3/4] overflow-hidden bg-slate-100">
+//                             <img
+//                               src={c.promoImageUrl}
+//                               alt={c.title || "Promotional Image"}
+//                               className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+//                               onError={(e) => {
+//                                 e.currentTarget.src = "/placeholder.svg?height=300&width=225";
+//                                 toast.error(`⚠️ Failed to load image for promo: ${c.title || "Untitled"}`);
+//                               }}
+//                             />
+//                           </div>
+//                         ) : isBook(c) && c.imageUrl ? (
+//                           <div className="aspect-[3/4] overflow-hidden bg-slate-100">
+//                             <img
+//                               src={c.imageUrl}
+//                               alt={c.title}
+//                               className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+//                               onError={(e) => {
+//                                 e.currentTarget.src = "/placeholder.svg?height=300&width=225";
+//                                 toast.error(`⚠️ Failed to load image for book: ${c.title}`);
+//                               }}
+//                             />
+//                           </div>
+//                         ) : (
+//                           <div className="aspect-[3/4] flex items-center justify-center bg-slate-100 text-slate-400">
+//                             <ImageIcon className="w-12 h-12" />
+//                           </div>
+//                         )}
+//                         <Badge className="absolute top-3 left-3 bg-blue-500 text-white text-sm px-3 py-1 rounded-full shadow-md">
+//                           <ImageIcon className="w-3 h-3 mr-1" />
+//                           {c.contentType === "book" ? "Book" : "Promo"}
+//                         </Badge>
+//                         {(isBook(c) && c.isFeatured) || (isPromo(c) && c.isActive) ? (
+//                           <Badge className="absolute top-3 right-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-sm px-3 py-1 rounded-full shadow-md">
+//                             <Star className="w-3 h-3 mr-1" />
+//                             Featured
+//                           </Badge>
+//                         ) : null}
+//                       </div>
+//                       <div className="p-6 space-y-3">
+//                         {isBook(c) ? (
+//                           <>
+//                             <div>
+//                               <h3 className="font-bold text-xl text-slate-800 line-clamp-2">{c.title}</h3>
+//                               <p className="text-sm text-slate-500 mt-1">by {c.author}</p>
+//                             </div>
+//                             <p className="text-slate-600 text-sm line-clamp-3">{c.description}</p>
+//                           </>
+//                         ) : (
+//                           <>
+//                             <div>
+//                               <h3 className="font-bold text-xl text-slate-800 line-clamp-2">{c.title || "Promotional Image"}</h3>
+//                               <p className="text-sm text-slate-500 mt-1">Status: {c.isActive ? "Active" : "Inactive"}</p>
+//                             </div>
+//                           </>
+//                         )}
+//                         <div className="flex gap-2 pt-2">
+//                           <Button
+//                             onClick={() => handleEdit(c)}
+//                             className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md"
+//                           >
+//                             <Edit className="w-4 h-4 mr-2" /> Edit
+//                           </Button>
+//                           <Button
+//                             onClick={() => handleDelete(c._id!, c.contentType)}
+//                             className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md"
+//                           >
+//                             <Trash2 className="w-4 h-4 mr-2" /> Delete
+//                           </Button>
+//                         </div>
+//                       </div>
+//                     </Card>
+//                   ))}
+//                 </div>
+//               )}
+//             </div>
+//           )}
+//         </div>
+//       </main>
+//     </div>
+//   );
+// }
+
+
+
+
+
+
+
+
+
+
+
+// src/app/admin/dashboard/page.tsx
+
+
 "use client";
 
 import React, { useState, useEffect, ChangeEvent, FormEvent, JSX } from "react";
 import { toast } from "sonner";
-import { Library, BookOpen, ImageIcon, Edit, Trash2, X, Plus, Users, FileText, Upload, Star, Search, Save, Eye } from "lucide-react"; // 'Eye' icon add kiya hai
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import {
+  Library, BookOpen, ImageIcon, Edit, Trash2, X, Plus, Users,
+  FileText, Upload, Star, Search, Save, Eye, LayoutDashboard,
+  CircleCheck, AlertTriangle
+} from "lucide-react";
 
+// Define your types here
 interface Book {
   _id?: string;
   title: string;
@@ -1480,7 +2166,7 @@ interface Promo {
   contentType: "image";
 }
 
-type Content = Book | Promo;
+export type Content = Book | Promo;
 
 const initialBookState: Book = {
   title: "",
@@ -1507,6 +2193,7 @@ const EnhancedInputField = ({
   onChange,
   required,
   icon,
+  type = "text",
 }: {
   label: string;
   name: string;
@@ -1514,19 +2201,21 @@ const EnhancedInputField = ({
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
   icon: JSX.Element;
+  type?: string;
 }) => (
   <div className="space-y-2">
-    <Label htmlFor={name} className="text-base font-semibold text-slate-700">
+    <label htmlFor={name} className="text-base font-semibold text-slate-700 block">
       {label}
-    </Label>
+    </label>
     <div className="relative">
-      <Input
+      <input
         id={name}
         name={name}
         value={value}
         onChange={onChange}
         required={required}
-        className="pl-10 border-slate-300 focus:ring-blue-500 focus:border-transparent transition-all"
+        type={type}
+        className="pl-10 pr-3 py-2 w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
       />
       <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">
         {icon}
@@ -1535,140 +2224,153 @@ const EnhancedInputField = ({
   </div>
 );
 
+// Custom Modal Component
+const Modal = ({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => void; children: React.ReactNode }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity duration-300">
+      <div className="relative w-full max-w-2xl mx-4 bg-white rounded-xl shadow-2xl p-6 transform transition-transform duration-300 scale-95 animate-slide-in-up">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export default function AdminDashboard() {
   const [allContent, setAllContent] = useState<Content[]>([]);
-  const [formData, setFormData] = useState<Content>(initialBookState);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("add");
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingContent, setEditingContent] = useState<Content | null>(null);
 
-  const isBook = (content: Content): content is Book => {
-    return content.contentType === "book";
-  };
-
-  const isPromo = (content: Content): content is Promo => {
-    return content.contentType === "image";
-  };
+  const isBook = (content: Content): content is Book => content.contentType === "book";
+  const isPromo = (content: Content): content is Promo => content.contentType === "image";
 
   const fetchContents = async () => {
     try {
-      const res = await fetch("/api/booklibrary", { cache: "no-store" });
-      const data = await res.json();
-      if (data.data) {
-        setAllContent(data.data);
-        
-      }
+      setLoading(true);
+      setError(null);
+      
+      const [booksRes, promosRes] = await Promise.all([
+        fetch("/api/booklibrary", { cache: "no-store" }),
+        fetch("/api/promos", { cache: "no-store" }),
+      ]);
+
+      const [booksData, promosData] = await Promise.all([
+        booksRes.json(),
+        promosRes.json(),
+      ]);
+
+      const books = booksData.data || [];
+      const promos = promosData.data || [];
+      const combinedContent = [...books, ...promos];
+      setAllContent(combinedContent);
+
     } catch (error) {
       console.error("Failed to fetch content:", error);
+      setError("Failed to load content. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
-useEffect(() => {
-    fetchContents(); // ✅ Data fetch karne ke liye function call karein
-}, []); // ✅ Dependency array ko khali rakhen
+
+  useEffect(() => {
+    fetchContents();
+  }, []);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setEditingContent((prev) => {
+      if (!prev) return prev;
+      return { ...prev, [name]: value };
+    });
   };
 
   const handleCheckboxChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: checked,
-    }));
+    setEditingContent((prev) => {
+      if (!prev) return prev;
+      return { ...prev, [name]: checked };
+    });
   };
 
   const handleContentTypeChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const newContentType = e.target.value as "book" | "image";
-    setFormData(newContentType === "book" ? initialBookState : initialPromoState);
+    setEditingContent(newContentType === "book" ? initialBookState : initialPromoState);
   };
 
-const handleSubmit = async (e: FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+  const handleOpenModal = (content?: Content) => {
+    setEditingContent(content || initialBookState);
+    setIsModalOpen(true);
+  };
 
-  const method = isEditMode ? "PUT" : "POST";
-  // Content type ke hisaab se endpoint select karein
-  const endpoint = isBook(formData)
-    ? `/api/booklibrary${isEditMode ? `?id=${formData._id}` : ''}`
-    : `/api/promos${isEditMode ? `?id=${formData._id}` : ''}`;
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingContent(null);
+  };
 
-  let payload: Partial<Book> | Partial<Promo>;
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingContent) return;
 
-  if (isBook(formData)) {
-    // 📚 Book payload
-    payload = {
-      title: formData.title,
-      author: formData.author,
-      description: formData.description,
-      imageUrl: formData.imageUrl,
-      pdfUrl: formData.pdfUrl,
-      isFeatured: formData.isFeatured,
-      contentType: "book",
-    };
+    setLoading(true);
 
-    if (!payload.title || !payload.author || !payload.imageUrl || !payload.pdfUrl) {
-      toast.error("⚠️ All book fields are required.");
-      setLoading(false);
-      return;
-    }
-  } else {
-    // 🖼️ Promo payload
-    payload = {
-      promoImageUrl: formData.promoImageUrl,
-      isActive: formData.isActive,
-      title: formData.title,
-      contentType: "image",
-    };
+    const method = editingContent._id ? "PUT" : "POST";
+    const endpoint = isBook(editingContent)
+      ? `/api/booklibrary${editingContent._id ? `?id=${editingContent._id}` : ''}`
+      : `/api/promos${editingContent._id ? `?id=${editingContent._id}` : ''}`;
 
-    if (!payload.promoImageUrl) {
-      toast.error("⚠️ Promotional image URL is required.");
-      setLoading(false);
-      return;
-    }
-  }
+    let payload: Partial<Content> = { ...editingContent };
+    delete payload._id;
 
-  console.log("📤 Sending payload to API:", payload);
-
-  try {
-    const res = await fetch(endpoint, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(
-        errorData.message || `Failed to ${isEditMode ? "update" : "add"} content.`
-      );
-    }
-
-    toast.success(`✅ Content ${isEditMode ? "updated" : "added"} successfully.`);
-    fetchContents(); // 🔄 Refresh data after submit
-    handleCancelEdit();
-  } catch (err) {
-    if (err instanceof Error) {
-      toast.error(`❌ Failed to save content: ${err.message}`);
-      console.error("Submit error:", err);
+    if (isBook(editingContent)) {
+      if (!editingContent.title || !editingContent.author || !editingContent.imageUrl || !editingContent.pdfUrl) {
+        toast.error("⚠️ All book fields are required.");
+        setLoading(false);
+        return;
+      }
     } else {
-      toast.error("❌ An unknown error occurred.");
-      console.error("Submit error:", err);
+      if (!editingContent.promoImageUrl) {
+        toast.error("⚠️ Promotional image URL is required.");
+        setLoading(false);
+        return;
+      }
     }
-  } finally {
-    setLoading(false);
-  }
-};
 
-  const handleEdit = (item: Content) => {
-    setFormData(item);
-    setIsEditMode(true);
-    setActiveTab("add");
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || `Failed to ${editingContent._id ? "update" : "add"} content.`);
+      }
+
+      toast.success(`✅ Content ${editingContent._id ? "updated" : "added"} successfully.`);
+      fetchContents();
+      handleCloseModal();
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(`❌ Failed to save content: ${err.message}`);
+        console.error("Submit error:", err);
+      } else {
+        toast.error("❌ An unknown error occurred.");
+        console.error("Submit error:", err);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id: string, contentType: "book" | "image") => {
@@ -1676,7 +2378,7 @@ const handleSubmit = async (e: FormEvent) => {
     if (!isConfirmed) return;
 
     try {
-      const res = await fetch(`/api/booklibrary?id=${id}&contentType=${contentType}`, {
+      const res = await fetch(`/api/${contentType === "book" ? "booklibrary" : "promos"}?id=${id}`, {
         method: "DELETE",
       });
 
@@ -1697,26 +2399,20 @@ const handleSubmit = async (e: FormEvent) => {
       }
     }
   };
+  
+  const filteredContents = allContent.filter(c => {
+    const searchString = isBook(c)
+      ? `${c.title} ${c.author}`
+      : c.title || "";
+    return searchString.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
-  const handleCancelEdit = () => {
-    setFormData(initialBookState);
-    setIsEditMode(false);
-  };
-const filteredContents = allContent.filter(c => {
-  let searchString = "";
-if (isBook(c)) {
-// Books ke liye, title aur author dono search karein
- searchString = `${c.title} ${c.author}`.toLowerCase();
-} else if (isPromo(c)) {
- // Promo images ke liye, sirf title search karein
- searchString = c.title.toLowerCase();
- }
- return searchString.includes(searchTerm.toLowerCase());
-});
-console.log("Filtered Contents:", filteredContents); // ✅ Yeh line lagayen
-return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 font-sans">
-      {/* Sidebar */}
+  const bookCount = allContent.filter(isBook).length;
+  const promoCount = allContent.filter(isPromo).length;
+  const totalFeatured = allContent.filter(c => (isBook(c) && c.isFeatured) || (isPromo(c) && c.isActive)).length;
+
+  return (
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 font-sans text-slate-800">
       <aside className="w-72 bg-white shadow-xl border-r border-slate-200 flex flex-col">
         <div className="p-6 border-b border-slate-200">
           <div className="flex items-center gap-3 mb-6">
@@ -1724,382 +2420,331 @@ return (
               <Library className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">Admin Panel</h2>
-              <p className="text-sm text-slate-500">Books & Promo Management</p>
+              <h2 className="text-xl font-bold">Admin Panel</h2>
+              <p className="text-sm text-slate-500">Content Management</p>
             </div>
           </div>
-          {isEditMode && (
-            <div className="bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-lg text-white mb-4 shadow-md">
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg text-white shadow-md transition-all hover:scale-[1.02] cursor-pointer" onClick={() => handleOpenModal()}>
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm">Editing Mode</p>
-                  <p className="font-bold truncate text-lg">
-                    {formData.title || "Untitled"}
-                  </p>
-                </div>
-                <Edit className="w-6 h-6 text-orange-200" />
+                <div className="text-sm text-blue-100 font-normal">Add New Content</div>
+                <Plus className="w-8 h-8 text-blue-200 opacity-70" />
               </div>
+              <h3 className="text-2xl font-bold mt-2">Add Content</h3>
             </div>
-          )}
-          <div className="grid grid-cols-1 gap-3 mb-6">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg text-white shadow-md">
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-lg text-white shadow-md transition-all hover:scale-[1.02]">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm">Total Entries</p>
-                  <p className="text-2xl font-bold">{allContent.length}</p>
-                </div>
-                <BookOpen className="w-8 h-8 text-blue-200 opacity-70" />
-              </div>
-            </div>
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-lg text-white shadow-md">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm">Books</p>
-                  <p className="text-2xl font-bold">{allContent.filter(c => c.contentType === "book").length}</p>
-                </div>
+                <div className="text-sm text-purple-100 font-normal">Total Books</div>
                 <BookOpen className="w-8 h-8 text-purple-200 opacity-70" />
               </div>
+              <h3 className="text-2xl font-bold mt-2">{bookCount}</h3>
             </div>
-            <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg text-white shadow-md">
+            <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg text-white shadow-md transition-all hover:scale-[1.02]">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm">Promo Images</p>
-                  <p className="text-2xl font-bold">{allContent.filter(c => c.contentType === "image").length}</p>
-                </div>
+                <div className="text-sm text-green-100 font-normal">Total Promos</div>
                 <ImageIcon className="w-8 h-8 text-green-200 opacity-70" />
               </div>
+              <h3 className="text-2xl font-bold mt-2">{promoCount}</h3>
             </div>
-            <div className="bg-gradient-to-r from-yellow-500 to-orange-600 p-4 rounded-lg text-white shadow-md">
+            <div className="bg-gradient-to-r from-yellow-500 to-orange-600 p-4 rounded-lg text-white shadow-md transition-all hover:scale-[1.02]">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-yellow-100 text-sm">Featured</p>
-                  <p className="text-2xl font-bold">{allContent.filter(c => isBook(c) && c.isFeatured).length}</p>
-                </div>
+                <div className="text-sm text-yellow-100 font-normal">Featured</div>
                 <Star className="w-8 h-8 text-yellow-200 opacity-70" />
               </div>
+              <h3 className="text-2xl font-bold mt-2">{totalFeatured}</h3>
             </div>
           </div>
         </div>
         <nav className="p-6 space-y-2 flex-1">
           <button
-            onClick={() => { setActiveTab("add"); handleCancelEdit(); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-              activeTab === "add" ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg" : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            {isEditMode ? <Edit className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-            <span className="font-medium">{isEditMode ? "Edit Content" : "Add New Content"}</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("view")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-              activeTab === "view" ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg" : "text-slate-600 hover:bg-slate-100"
-            }`}
+            onClick={() => {}}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 justify-start bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
           >
             <Eye className="w-5 h-5" />
             <span className="font-medium">View All Content</span>
           </button>
-          {isEditMode && (
-            <button
-              onClick={handleCancelEdit}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200"
-            >
-              <X className="w-5 h-5" />
-              <span className="font-medium">Cancel Edit</span>
-            </button>
-          )}
         </nav>
         <div className="p-6 border-t border-slate-200 text-sm text-slate-500">
           <p>&copy; {new Date().getFullYear()} Book Library. All rights reserved.</p>
         </div>
       </aside>
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        <header className="bg-white shadow-sm border-b border-slate-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800">
-                {activeTab === "add" ? (isEditMode ? "✏️ Edit Content" : "📚 Add New Content") : "📖 Content Management"}
-              </h1>
-              <p className="text-slate-600 mt-1">
-                {activeTab === "add"
-                  ? isEditMode
-                    ? `Editing: ${isBook(formData) ? formData.title : formData.title || "Untitled"}`
-                    : "Add books or promotional images to your library"
-                  : "Manage your books and promotional images"}
-              </p>
-            </div>
-            {activeTab === "view" && (
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
-                  <Input
-                    placeholder="Search content..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-64 border-slate-300 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
+      <main className="flex-1 overflow-y-auto p-8">
+        <header className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold text-slate-800">
+              Content Management
+            </h1>
+            <span className="bg-slate-200 text-slate-600 px-3 py-1 text-sm rounded-full font-medium">
+              Admin
+            </span>
+          </div>
+          <button
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105"
+          >
+            <Plus className="w-5 h-5" />
+            Add New Content
+          </button>
+        </header>
+        
+        <div className="relative mb-6">
+          <Search className="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" />
+          <input
+            placeholder="Search by title or author..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-12 pr-3 py-3 w-full max-w-lg border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          />
+        </div>
+
+        {error ? (
+          <div className="p-12 text-center bg-white shadow-lg rounded-xl">
+            <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-slate-600 mb-2">Error</h3>
+            <p className="text-red-500">{error}</p>
+          </div>
+        ) : loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : filteredContents.length === 0 ? (
+          <div className="p-12 text-center bg-white shadow-lg rounded-xl">
+            <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-slate-600 mb-2">No Content Found</h3>
+            <p className="text-slate-500">
+              {searchTerm
+                ? "No content matches your search criteria."
+                : "Start by adding your first book or promo image to the library."}
+            </p>
+            {!searchTerm && (
+              <button
+                onClick={() => handleOpenModal()}
+                className="mt-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 px-6 rounded-xl shadow-md"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Content
+              </button>
             )}
           </div>
-        </header>
-        <div className="p-6">
-          {activeTab === "add" ? (
-            <Card className="shadow-xl border-0 bg-white rounded-xl">
-              <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b rounded-t-xl p-6">
-                <CardTitle className="flex items-center gap-3 text-2xl font-bold text-slate-800">
-                  {isEditMode ? <Edit className="w-6 h-6" /> : <Upload className="w-6 h-6" />}
-                  {isEditMode ? "Edit Content Details" : "Add New Content"}
-                </CardTitle>
-                <CardDescription className="text-slate-600">
-                  {isEditMode ? "Update the content information below" : "Fill in the required information for the book or promotional image"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-8">
-                <form onSubmit={handleSubmit} className="space-y-8">
-                  <div className="space-y-2">
-                    <Label htmlFor="contentType" className="text-base font-semibold text-slate-700">
-                      Content Type
-                    </Label>
-                    <select
-                      name="contentType"
-                      id="contentType"
-                      className="w-full border border-slate-300 rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-700"
-                      value={formData.contentType}
-                      onChange={handleContentTypeChange}
-                      disabled={isEditMode}
-                    >
-                      <option value="book">📖 Book</option>
-                      <option value="image">🖼️ Promotional Image</option>
-                    </select>
-                  </div>
-                  {isBook(formData) ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <EnhancedInputField
-                        name="title"
-                        label="Book Title"
-                        value={formData.title}
-                        onChange={handleInputChange}
-                        required
-                        icon={<BookOpen className="w-4 h-4 text-slate-500" />}
-                      />
-                      <EnhancedInputField
-                        name="author"
-                        label="Author Name"
-                        value={formData.author}
-                        onChange={handleInputChange}
-                        required
-                        icon={<Users className="w-4 h-4 text-slate-500" />}
-                      />
-                      <div className="md:col-span-2">
-                        <div className="space-y-2 relative">
-                          <Label htmlFor="description" className="text-base font-semibold text-slate-700">Description</Label>
-                          <textarea
-                            id="description"
-                            name="description"
-                            value={formData.description}
-                            onChange={handleInputChange}
-                            required
-                            className="w-full border border-slate-300 rounded-lg p-3 pl-10 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-700 min-h-[100px]"
-                          />
-                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 mt-3"><FileText className="w-4 h-4 text-slate-500" /></div>
+        ) : (
+          <div className="bg-white p-6 shadow-xl rounded-xl">
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-sm text-slate-500 uppercase text-left">
+                    <th className="py-4 px-4 font-semibold">Image</th>
+                    <th className="py-4 px-4 font-semibold">Title</th>
+                    <th className="py-4 px-4 font-semibold">Type</th>
+                    <th className="py-4 px-4 font-semibold hidden md:table-cell">Status</th>
+                    <th className="py-4 px-4 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredContents.map((c) => (
+                    <tr key={c._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                      <td className="py-4 px-4">
+                        <div className="w-16 h-16 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center">
+                          {isBook(c) && c.imageUrl ? (
+                            <img src={c.imageUrl} alt={c.title} className="w-full h-full object-cover" />
+                          ) : isPromo(c) && c.promoImageUrl ? (
+                            <img src={c.promoImageUrl} alt={c.title || "Promo"} className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="w-8 h-8 text-slate-400" />
+                          )}
                         </div>
-                      </div>
-                      <EnhancedInputField
-                        name="imageUrl"
-                        label="Cover Image URL"
-                        value={formData.imageUrl}
-                        onChange={handleInputChange}
-                        required
-                        icon={<ImageIcon className="w-4 h-4 text-slate-500" />}
-                      />
-                      <EnhancedInputField
-                        name="pdfUrl"
-                        label="PDF File URL"
-                        value={formData.pdfUrl}
-                        onChange={handleInputChange}
-                        required
-                        icon={<FileText className="w-4 h-4 text-slate-500" />}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      <EnhancedInputField
-                        name="title"
-                        label="Promo Title"
-                        value={formData.title || ""}
-                        onChange={handleInputChange}
-                        icon={<BookOpen className="w-4 h-4 text-slate-500" />}
-                      />
-                      <EnhancedInputField
-                        name="promoImageUrl"
-                        label="Promotional Image URL"
-                        value={formData.promoImageUrl}
-                        onChange={handleInputChange}
-                        required
-                        icon={<ImageIcon className="w-4 h-4 text-slate-500" />}
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-200 shadow-sm">
-                    <input
-                      type="checkbox"
-                      id="isFeatured"
-                      name={isBook(formData) ? "isFeatured" : "isActive"}
-                      checked={isBook(formData) ? formData.isFeatured : formData.isActive}
-                      onChange={handleCheckboxChange}
-                      className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
-                    />
-                    <div>
-                      <Label htmlFor="isFeatured" className="font-medium text-slate-700 cursor-pointer">
-                        {isBook(formData) ? "Is Featured" : "Is Active"}
-                      </Label>
-                      <p className="text-sm text-slate-600">
-                        This {formData.contentType === "book" ? "book" : "promo image"} will be featured on the main page.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                    <Button
-                      type="submit"
-                      disabled={loading}
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
-                    >
-                      {loading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          {isEditMode ? "Updating..." : "Processing..."}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          {isEditMode ? <Save className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
-                          {isEditMode ? "Update Content" : "Add Content"}
-                        </div>
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCancelEdit}
-                      className="flex-1 px-8 py-3 text-lg rounded-xl border-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold"
-                    >
-                      <X className="w-5 h-5 mr-2" />
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {filteredContents.length === 0 ? (
-                <Card className="p-12 text-center bg-white shadow-lg rounded-xl">
-                  <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-slate-600 mb-2">No Content Found</h3>
-                  <p className="text-slate-500">
-                    {searchTerm
-                      ? "No content matches your search criteria."
-                      : "Start by adding your first book or promo image to the library."}
-                  </p>
-                  {!searchTerm && (
-                    <Button
-                      onClick={() => setActiveTab("add")}
-                      className="mt-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 px-6 rounded-xl shadow-md"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add First Content
-                    </Button>
-                  )}
-                </Card>
-              ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredContents.map((c: Content) => (
-                    <Card
-                      key={c._id}
-                      className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-200 bg-white border-0 rounded-xl"
-                    >
-                      <div className="relative">
-                        {isPromo(c) && c.promoImageUrl ? (
-                          <div className="aspect-[3/4] overflow-hidden bg-slate-100">
-                            <img
-                              src={c.promoImageUrl}
-                              alt={c.title || "Promotional Image"}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
-                              onError={(e) => {
-                                e.currentTarget.src = "/placeholder.svg?height=300&width=225";
-                                toast.error(`⚠️ Failed to load image for promo: ${c.title || "Untitled"}`);
-                              }}
-                            />
-                          </div>
-                        ) : isBook(c) && c.imageUrl ? (
-                          <div className="aspect-[3/4] overflow-hidden bg-slate-100">
-                            <img
-                              src={c.imageUrl}
-                              alt={c.title}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
-                              onError={(e) => {
-                                e.currentTarget.src = "";
-                                toast.error(`⚠️ Failed to load image for book: ${c.title}`);
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <div className="aspect-[3/4] flex items-center justify-center bg-slate-100 text-slate-400">
-                            <ImageIcon className="w-12 h-12" />
-                          </div>
-                        )}
-                        <Badge className="absolute top-3 left-3 bg-blue-500 text-white text-sm px-3 py-1 rounded-full shadow-md">
-                          <ImageIcon className="w-3 h-3 mr-1" />
+                      </td>
+                      <td className="py-4 px-4 text-slate-800 font-medium">
+                        <h3 className="line-clamp-2">{isBook(c) ? c.title : c.title || "Promotional Image"}</h3>
+                        {isBook(c) && <p className="text-sm text-slate-500">by {c.author}</p>}
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-sm font-medium text-slate-700">
                           {c.contentType === "book" ? "Book" : "Promo"}
-                        </Badge>
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 hidden md:table-cell">
                         {(isBook(c) && c.isFeatured) || (isPromo(c) && c.isActive) ? (
-                          <Badge className="absolute top-3 right-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-sm px-3 py-1 rounded-full shadow-md">
+                          <span className="inline-flex items-center rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 text-sm font-medium">
                             <Star className="w-3 h-3 mr-1" />
                             Featured
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className="p-6 space-y-3">
-                        {isBook(c) ? (
-                          <>
-                            <div>
-                              <h3 className="font-bold text-xl text-slate-800 line-clamp-2">{c.title}</h3>
-                              <p className="text-sm text-slate-500 mt-1">by {c.author}</p>
-                            </div>
-                            <p className="text-slate-600 text-sm line-clamp-3">{c.description}</p>
-                          </>
+                          </span>
                         ) : (
-                          <>
-                            <div>
-                              <h3 className="font-bold text-xl text-slate-800 line-clamp-2">{c.title || "Promotional Image"}</h3>
-                              <p className="text-sm text-slate-500 mt-1">Status: {c.isActive ? "Active" : "Inactive"}</p>
-                            </div>
-                          </>
+                          <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-500 px-3 py-1 text-sm font-medium">
+                            Normal
+                          </span>
                         )}
-                        <div className="flex gap-2 pt-2">
-                          <Button
-                            onClick={() => handleEdit(c)}
-                            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md"
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => handleOpenModal(c)}
+                            className="p-2 rounded-full text-blue-500 border border-blue-200 hover:bg-blue-50 transition-colors"
                           >
-                            <Edit className="w-4 h-4 mr-2" /> Edit
-                          </Button>
-                          <Button
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleDelete(c._id!, c.contentType)}
-                            className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md"
+                            className="p-2 rounded-full text-red-500 border border-red-200 hover:bg-red-50 transition-colors"
                           >
-                            <Trash2 className="w-4 h-4 mr-2" /> Delete
-                          </Button>
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                      </div>
-                    </Card>
+                      </td>
+                    </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Modal Dialog for Add/Edit Form */}
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <h2 className="text-2xl font-bold text-slate-800">
+              {editingContent?._id ? "Edit Content" : "Add New Content"}
+            </h2>
+            {editingContent?._id ? <Edit className="w-6 h-6" /> : <Upload className="w-6 h-6" />}
+          </div>
+          <p className="text-slate-600 mb-6">
+            {editingContent?._id ? "Update the content information below." : "Fill in the required information for the book or promotional image."}
+          </p>
+          {editingContent && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="contentType" className="text-base font-semibold text-slate-700 block">
+                  Content Type
+                </label>
+                <select
+                  name="contentType"
+                  id="contentType"
+                  className="w-full border border-slate-300 rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-700"
+                  value={editingContent.contentType}
+                  onChange={handleContentTypeChange}
+                  disabled={!!editingContent._id}
+                >
+                  <option value="book">📖 Book</option>
+                  <option value="image">🖼️ Promotional Image</option>
+                </select>
+              </div>
+              {isBook(editingContent) ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <EnhancedInputField
+                    name="title"
+                    label="Book Title"
+                    value={editingContent.title}
+                    onChange={handleInputChange}
+                    required
+                    icon={<BookOpen className="w-4 h-4 text-slate-500" />}
+                  />
+                  <EnhancedInputField
+                    name="author"
+                    label="Author Name"
+                    value={editingContent.author}
+                    onChange={handleInputChange}
+                    required
+                    icon={<Users className="w-4 h-4 text-slate-500" />}
+                  />
+                  <div className="md:col-span-2">
+                    <div className="space-y-2">
+                      <label htmlFor="description" className="text-base font-semibold text-slate-700 block">Description</label>
+                      <textarea
+                        id="description"
+                        name="description"
+                        value={editingContent.description}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full border border-slate-300 rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-700 min-h-[100px]"
+                      />
+                    </div>
+                  </div>
+                  <EnhancedInputField
+                    name="imageUrl"
+                    label="Cover Image URL"
+                    value={editingContent.imageUrl}
+                    onChange={handleInputChange}
+                    required
+                    icon={<ImageIcon className="w-4 h-4 text-slate-500" />}
+                  />
+                  <EnhancedInputField
+                    name="pdfUrl"
+                    label="PDF File URL"
+                    value={editingContent.pdfUrl}
+                    onChange={handleInputChange}
+                    required
+                    icon={<FileText className="w-4 h-4 text-slate-500" />}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <EnhancedInputField
+                    name="title"
+                    label="Promo Title"
+                    value={editingContent.title || ""}
+                    onChange={handleInputChange}
+                    icon={<BookOpen className="w-4 h-4 text-slate-500" />}
+                  />
+                  <EnhancedInputField
+                    name="promoImageUrl"
+                    label="Promotional Image URL"
+                    value={editingContent.promoImageUrl}
+                    onChange={handleInputChange}
+                    required
+                    icon={<ImageIcon className="w-4 h-4 text-slate-500" />}
+                  />
                 </div>
               )}
-            </div>
+              <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-200 shadow-sm">
+                <input
+                  type="checkbox"
+                  id="isFeatured"
+                  name={isBook(editingContent) ? "isFeatured" : "isActive"}
+                  checked={isBook(editingContent) ? editingContent.isFeatured : editingContent.isActive}
+                  onChange={handleCheckboxChange}
+                  className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+                />
+                <div>
+                  <label htmlFor="isFeatured" className="font-medium text-slate-700 cursor-pointer">
+                    {isBook(editingContent) ? "Is Featured" : "Is Active"}
+                  </label>
+                  <p className="text-sm text-slate-600">
+                    This {editingContent.contentType === "book" ? "book" : "promo image"} will be featured on the main page.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      {editingContent._id ? "Updating..." : "Processing..."}
+                    </>
+                  ) : (
+                    <>
+                      {editingContent._id ? <Save className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
+                      {editingContent._id ? "Update Content" : "Add Content"}
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="flex-1 px-8 py-3 text-lg rounded-xl border-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center justify-center gap-2"
+                >
+                  <X className="w-5 h-5" />
+                  Cancel
+                </button>
+              </div>
+            </form>
           )}
         </div>
-      </main>
+      </Modal>
     </div>
   );
 }
