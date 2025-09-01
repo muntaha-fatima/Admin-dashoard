@@ -2142,9 +2142,11 @@ import React, { useState, useEffect, ChangeEvent, FormEvent, JSX } from "react";
 import { toast } from "sonner";
 import {
   Library, BookOpen, ImageIcon, Edit, Trash2, X, Plus, Users,
-  FileText, Upload, Star, Search, Save, Eye, LayoutDashboard,
-  CircleCheck, AlertTriangle
+  FileText, Upload, Star, Search, Save, Eye,  AlertTriangle
 } from "lucide-react";
+
+import { SignedIn, UserButton } from "@clerk/nextjs";
+
 
 // Define your types here
 interface Book {
@@ -2427,7 +2429,9 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg text-white shadow-md transition-all hover:scale-[1.02] cursor-pointer" onClick={() => handleOpenModal()}>
               <div className="flex items-center justify-between">
+               
                 <div className="text-sm text-blue-100 font-normal">Add New Content</div>
+                
                 <Plus className="w-8 h-8 text-blue-200 opacity-70" />
               </div>
               <h3 className="text-2xl font-bold mt-2">Add Content</h3>
@@ -2471,20 +2475,31 @@ export default function AdminDashboard() {
       <main className="flex-1 overflow-y-auto p-8">
         <header className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
           <div className="flex items-center gap-4">
+           
+
             <h1 className="text-3xl font-bold text-slate-800">
+               
               Content Management
             </h1>
             <span className="bg-slate-200 text-slate-600 px-3 py-1 text-sm rounded-full font-medium">
               Admin
             </span>
           </div>
+            <div className="flex items-center gap-4">
+           <SignedIn>
+            <UserButton afterSignOutUrl="/login" />
+           
           <button
             onClick={() => handleOpenModal()}
             className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105"
           >
+            
             <Plus className="w-5 h-5" />
+            
             Add New Content
           </button>
+      </SignedIn>
+      </div>
         </header>
         
         <div className="relative mb-6">
