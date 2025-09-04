@@ -1185,7 +1185,7 @@ const initialPromoState: Promo = {
   contentType: "image",
 };
 
-// Custom Input Field Component
+
 const EnhancedInputField = ({
   label,
   name,
